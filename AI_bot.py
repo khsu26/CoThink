@@ -1,6 +1,7 @@
 import streamlit as st
 import openai
 import os
+import fitz  # PyMuPDF
 
 # set up openai api key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -9,12 +10,24 @@ client = openai.OpenAI()
 st.title("AI Study Assistant")
 st.write("Upload or paste your notes below. Choose a learning tool to help you review!")
 
-# upload file .txt
-uploaded_file = st.file_uploader("Upload a study guide (.txt)", type=["txt"])
+# upload file .txt or .pdf
+uploaded_file = st.file_uploader("Upload a study guide (.txt or .pdf)", type=["txt", "pdf"])
 uploaded_text = ""
+
+# extract text from uploaded file
 if uploaded_file is not None:
-    uploaded_text = uploaded_file.read().decode("utf-8")
-    st.success("File uploaded successfully!")
+    if uploaded_file.type == "text/plain":
+        uploaded_text = uploaded_file.read().decode("utf-8")
+        st.success("Text file uploaded successfully!")
+    elif uploaded_file.type == "application/pdf":
+        try:
+            with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
+                uploaded_text = ""
+                for page in doc:
+                    uploaded_text += page.get_text()
+            st.success("PDF file uploaded and processed!")
+        except Exception as e:
+            st.error(f"Error reading PDF: {e}")
 
 # study guide text area
 study_text = st.text_area("Or paste your study guide here:", height=300)
